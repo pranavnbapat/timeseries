@@ -1,2 +1,6 @@
 pandas
 seaborn
+statsmodels
+scikit-learn
+matplotlib
+pymannkendall

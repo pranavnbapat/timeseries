@@ -2,9 +2,21 @@ import sys
 
 import pandas as pd
 import core_functions as cf
+import seaborn as sns
+import datetime
+import matplotlib
+from matplotlib import pyplot as plt
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 import warnings
 warnings.filterwarnings('ignore')
+
+
+# Declare variables
+trend_flag = 0      # 0 for no trend, 1 for trend
+seasonality_flag = 0    # 0 for no seasonality, 1 for seasonality
+regressor = 'ct'
+
 
 # Load data
 df = pd.read_csv('data/train.csv')
@@ -19,7 +31,7 @@ df = cf.clean_timeseries(df)
 
 
 # Remove outliers
-df = cf.remove_outliers_iqr(df)
+# df = cf.remove_outliers_iqr(df)
 
 
 # To get info
@@ -33,36 +45,26 @@ df = df.reset_index()
 
 
 # Identify timeseries pattern
-monthly_df = cf.identify_ts_pattern(df)
-# From now, we'll use monthly_df
-
-# Needs a lot of improvement. Temporary provision
-if monthly_df.shape[0] > 48:
-    print("Data is monthly.")
-else:
-    print("Data is weekly.")
-
-# For weekly
-'''
-Weekly forecasting is inadequate due to the deterministic effect of holidays and other events. 
-Weekly data can be severely skewed by when the holiday occurs and activity before and after the holiday.
-df = df.set_index('date')
-weekly_df = df['sales'].resample('W').sum()
-df = df.reset_index()
-weekly_df = weekly_df.reset_index()
-print(weekly_df.head())
-print(weekly_df.shape)
-sys.exit()
-'''
+timely_df = cf.identify_ts_pattern(df)
+cf.sales_duration(timely_df)
+# From now, we'll use timely_df
 
 
-cf.sales_duration(monthly_df)
+# Get average sales
+cf.avg_timely_sales(timely_df)
 
 
-# cf.trend_seasonality_plot(monthly_df)
-monthly_df = monthly_df.set_index('date')
-cf.time_plot(monthly_df, 'date', 'sales', 'Monthly sales with mean')
-monthly_df = monthly_df.reset_index()
+# Get trend and seasonality plots
+# cf.trend_seasonality_plot(timely_df)
+
+
+# Get time plot
+# cf.time_plot(timely_df, 'date', 'sales', 'Ssales with mean')
+
+
+# Get line plot
+# cf.get_line_plot(timely_df)
+
 
 # Checking for trend
 '''
@@ -76,15 +78,17 @@ var_s: Variance S
 slope: Theil-Sen estimator/slope
 intercept: Intercept of Kendall-Theil Robust Line
 '''
-regressor = 'ct'
-trend_check_for_kpss = cf.checking_for_trend(monthly_df['sales'])
+
+trend_check_for_kpss = cf.checking_for_trend(timely_df['sales'])
 if trend_check_for_kpss[1]:
     regressor = 'c'
+    trend_flag = 1
 
 
 # Checking for stationarity
-adf_p = cf.adfuller_test(monthly_df['sales'])
-kpss_p = cf.kpss_test(monthly_df['sales'], regressor=regressor)
+adf_p = cf.adfuller_test(timely_df['sales'])
+kpss_p = cf.kpss_test(timely_df['sales'], regressor=regressor)
+cf.draw_line()
 '''
 "Case 1: Both tests conclude that the series is not stationary - The series is not stationary \n"
 "Case 2: Both tests conclude that the series is stationary - The series is stationary \n"
@@ -93,7 +97,7 @@ kpss_p = cf.kpss_test(monthly_df['sales'], regressor=regressor)
 "Case 4: KPSS indicates non-stationarity and ADF indicates stationarity - The series is difference stationary. "
 "Differencing is to be used to make series stationary. The differenced series is checked for stationarity."
 '''
-print("\n")
+
 if adf_p <= 0.05 and kpss_p >= 0.05:
     print("Timeseries is stationary")
 elif adf_p >= 0.05 and kpss_p <= 0.05:
@@ -104,10 +108,21 @@ elif adf_p >= 0.05 and kpss_p >= 0.05:
     print("Timeseries is trend stationary")
 
 
-cf.make_stationary(monthly_df)
+# Making time series stationary
+stationary_df = cf.get_diff(timely_df, 1)
+cf.time_plot(stationary_df, 'date', 'sales_diff', 'Monthly sales with mean')
+# timely_df = timely_df.reset_index(drop=True)
+timely_df = timely_df.drop(columns=['sales_diff'])
 
 
-# Reset the index
-# drop=True prevents reset_index to create a new 'index' column
-# df = df.reset_index(drop=True)
+# Seasonal decomposition
+timely_df = timely_df.set_index('date')
+# decomposition = cf.get_seasonal_decomposition(timely_df)
+timely_df = timely_df.reset_index(drop=True)
+
+
+# Identifying seasonality
+acf = plot_acf(stationary_df['sales_diff'])
+plt.show()
+
 

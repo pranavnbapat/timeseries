@@ -1,12 +1,23 @@
 import pandas as pd
 import numpy as np
-import seaborn as sns
 import datetime
+
+# Plotting libraries
 import matplotlib
 from matplotlib import pyplot as plt
 import pymannkendall as mk
 matplotlib.use('TkAgg')     # Only for pycharm
+import seaborn as sns
+
+# Statistics libraries
+import statsmodels.api as sm
+import statsmodels.tsa.api as smt
 from statsmodels.tsa.stattools import adfuller, kpss
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+
+def draw_line():
+    print("---------------------------------------------------------------------------")
 
 
 def get_info(df):
@@ -115,15 +126,14 @@ def identify_ts_pattern(df):
     print("Counting years/months/weeks/days to identify time pattern")
     df = df.set_index('date')
     monthly_df = df['sales'].resample('MS').sum()
-    df = df.reset_index()
     monthly_df = monthly_df.reset_index()
-    # print(monthly_df.head())
-    # print(monthly_df.shape)
     return monthly_df
 
 
 # Duration of dataset
 def sales_duration(data):
+    draw_line()
+    print("Timeseries contains: ")
     data.date = pd.to_datetime(data.date)
     number_of_days = data.date.max() - data.date.min()
     number_of_months = number_of_days.days / 30
@@ -131,6 +141,7 @@ def sales_duration(data):
     print(number_of_days.days, 'days')
     print(round(number_of_months, 2), 'months')
     print(round(number_of_years, 2), 'years')
+    draw_line()
 
 
 def trend_seasonality_plot(df):
@@ -146,7 +157,7 @@ def trend_seasonality_plot(df):
 
 
 def adfuller_test(sales):
-    print("\nResults of Dickey-Fuller Test:")
+    print("Results of Dickey-Fuller Test:")
     dftest = adfuller(sales, autolag="AIC")
     labels = ['ADF Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used']
     for value, label in zip(dftest, labels):
@@ -186,24 +197,69 @@ def checking_for_trend(sales):
     return mk.original_test(sales)
 
 
-def get_diff(data, time_diff):
+def get_diff(df, time_diff):
     # time is in months for monthly data
-    data['sales_diff'] = data.sales.diff(time_diff)
-    data = data.dropna()
-    return data
+    df['sales_diff'] = df.sales.diff(time_diff)
+    df = df.dropna()
+    return df
 
 
-def time_plot(data, x_col, y_col, title):
+def time_plot(df, x_col, y_col, title):
     fig, ax = plt.subplots(figsize=(15, 5))
-    sns.lineplot(x_col, y_col, data=data, ax=ax, color='mediumblue', label='Total Sales')
-    second = data.groupby(data.date.dt.year)[y_col].mean().reset_index()
+    sns.lineplot(data=df, x=x_col, y=y_col, ax=ax, color='mediumblue', label='Total Sales')
+    second = df.groupby(df.date.dt.year)[y_col].mean().reset_index()
     second.date = pd.to_datetime(second.date, format='%Y')
-    sns.lineplot((second.date + datetime.timedelta(6*365/12)), y_col, data=second, ax=ax, color='red',
+    sns.lineplot(data=second, x=(second.date + datetime.timedelta(6*365/12)), y=y_col, ax=ax, color='red',
                  label='Mean Sales')
     ax.set(xlabel="Date", ylabel="Sales", title=title)
     sns.despine()
+    plt.show()
 
 
-def make_stationary(df):
-    df = get_diff(df, 1)
-    time_plot(df, 'date', 'sales_diff', 'Monthly sales with differencing')
+def avg_timely_sales(df):
+    # Overall
+    avg_timely_sales = df.sales.mean()
+    print(f"Overall average monthly sales: {round(avg_timely_sales, 2)}")
+
+    # Last 12 months (this will be the forecasted sales)
+    avg_timely_sales_12month = df.sales[-12:].mean()
+    print(f"Last 12 months average monthly sales: {round(avg_timely_sales_12month, 2)}")
+    draw_line()
+
+
+def get_line_plot(monthly_df):
+    i = 1
+    arr_x = []
+    arr_y = []
+
+    plt.figure(figsize=(20, 10))
+
+    for index, value in monthly_df.iterrows():
+        arr_x.append(value.date.month)
+        arr_y.append(value.sales)
+
+        if i == 12:
+            plt.plot(arr_x, arr_y, label=value.date.year)
+            arr_x = []
+            arr_y = []
+            i = 0
+
+        i += 1
+
+    plt.grid()
+    plt.legend()
+    plt.xlabel("Date")
+    plt.ylabel("Sales")
+    plt.show()
+
+
+def get_seasonal_decomposition(df):
+    plt.rc('figure', figsize=(12, 8))
+    plt.rc('font', size=15)
+    decomposition = sm.tsa.seasonal_decompose(df, model='additive')
+    decom_fig = decomposition.plot()
+    decom_fig.show()
+    plt.show()
+    return decomposition
+
+

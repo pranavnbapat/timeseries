@@ -58,6 +58,20 @@ cf.avg_timely_sales(timely_df)
 # cf.trend_seasonality_plot(timely_df)
 
 
+# Interactive plots
+'''fig = px.line(timely_df.reset_index(), x='date', y='sales', title='Sales')
+fig.update_xaxes(rangeslider_visible=True,
+                 rangeselector=dict(buttons=list([
+                     dict(count=1, label="1y", step="year", stepmode="backward"),
+                     dict(count=2, label="3y", step="year", stepmode="backward"),
+                     dict(count=3, label="5y", step="year", stepmode="backward"),
+                     dict(step="all")
+                 ]))
+                 )
+
+fig.show()'''
+
+
 # Get time plot
 # cf.time_plot(timely_df, 'date', 'sales', 'Ssales with mean')
 

@@ -1,6 +1,15 @@
 pandas
+
+# For plotting
 seaborn
+matplotlib
+
+# For statistical reasoning
 statsmodels
 scikit-learn
-matplotlib
+
+# For identifying trend
 pymannkendall
+
+# For plotting anomaly detection
+plotly

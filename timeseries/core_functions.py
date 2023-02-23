@@ -54,7 +54,10 @@ def remove_outliers_iqr(data):
 
     # calculate the outlier cutoff
     cut_off = iqr * 1.5
+    print(f"Threshold is {cut_off}")
     lower, upper = q25 - cut_off, q75 + cut_off
+
+    print(f"Lower bound is {lower} and upper bound is {upper}")
 
     # identify outliers
     outliers = [x for x in df['sales'] if x < lower or x > upper]
@@ -80,6 +83,23 @@ def remove_outliers_quantile(data):
     df.drop(index_names, inplace=True)
     df = df.reset_index()
 
+    return df
+
+
+def remove_outliers_zscore(data):
+    threshold = 3
+    df = data
+    mean = np.mean(df['sales'])
+    std = np.std(df['sales'])
+    outliers = []
+
+    for i in df['sales']:
+        z_score = (i - mean) / std
+        if np.abs(z_score) > threshold:
+            outliers.append(i)
+
+    df = df[~df['sales'].isin(outliers)]
+    df = df.reset_index()
     return df
 
 
